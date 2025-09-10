@@ -6,6 +6,11 @@
   box-sizing: border-box;
 }
 
+.night img {
+  opacity: 0.4;
+  width: 15%;
+}
+
 :root {
   --dark-color: #000;
 }
@@ -21,6 +26,8 @@ body {
 }
 
 .night {
+  display: flow;
+  text-align: center;
   position: fixed;
   left: 50%;
   top: 0;

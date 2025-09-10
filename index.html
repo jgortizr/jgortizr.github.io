@@ -3,62 +3,15 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>Thalia</title>
+  <title>Thalia ❤️</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      background: radial-gradient(ellipse at bottom, #001 0%, #000 70%);
-      overflow: hidden;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      color: #fff;
-    }
-
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
-
-    .ui {
-      position: fixed;
-      left: 16px;
-      top: 16px;
-      z-index: 10;
-      background: rgba(0, 0, 0, 0.35);
-      padding: 8px 12px;
-      border-radius: 8px;
-      backdrop-filter: blur(4px);
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .ui button {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: white;
-      padding: 6px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    .ui button:hover {
-      transform: translateY(-1px);
-    }
-
-    .hint {
-      font-size: 13px;
-      opacity: 0.9;
-    }
-  </style>
+  <link rel="stylesheet" href="index.css">
 </head>
 
 <body>
   <div class="ui">
-    <button onclick="location.href='flores.html'">Sorpresa</button>
+    <button class="button-64" role="button" onclick="location.href='flores.html'"><span class="text">Dale click, es una
+        sorpresa</span></button>
   </div>
 
   <canvas id="c"></canvas>
