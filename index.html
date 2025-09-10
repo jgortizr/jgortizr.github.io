@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Thalia</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: radial-gradient(ellipse at bottom, #001 0%, #000 70%);
+      overflow: hidden;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: #fff;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .ui {
+      position: fixed;
+      left: 16px;
+      top: 16px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 8px 12px;
+      border-radius: 8px;
+      backdrop-filter: blur(4px);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .ui button {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .ui button:hover {
+      transform: translateY(-1px);
+    }
+
+    .hint {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="ui">
+    <button onclick="location.href='flores.html'">Sorpresa</button>
+  </div>
+
+  <canvas id="c"></canvas>
+
+  <script>
+    (function () {
+      // Canvas & contexto
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d', { alpha: true });
+
+      // tamaño
+      function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(window.innerWidth * dpr);
+        canvas.height = Math.floor(window.innerHeight * dpr);
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      window.addEventListener('resize', resize, { passive: true });
+      resize();
+
+      // parámetros
+      const GRAVITY = 0.06;
+      const FRICTION = 0.99;
+      const PARTICLE_FRICTION = 0.985;
+      const AIR_RESIST = 0.998;
+      const colors = [
+        '#FF3B3B', '#FF8A00', '#FFD93D', '#8CFF4C', '#4CE0FF', '#8AA2FF', '#DA73FF'
+      ];
+
+      // arrays
+      let rockets = [];   // subidas
+      let particles = []; // explosiones
+
+      // util
+      function rand(min, max) { return Math.random() * (max - min) + min; }
+      function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+
+      // Rocket constructor (sube)
+      class Rocket {
+        constructor(x, y, targetX, targetY, color) {
+          this.x = x; this.y = y;
+          this.vx = (targetX - x) / rand(20, 35);
+          this.vy = (targetY - y) / rand(20, 35);
+          this.targetX = targetX; this.targetY = targetY;
+          this.color = color;
+          this.age = 0;
+          this.shouldExplode = false;
+        }
+        update() {
+          this.vy += GRAVITY * 0.2;
+          this.vx *= FRICTION;
+          this.vy *= FRICTION;
+          this.x += this.vx;
+          this.y += this.vy;
+          this.age++;
+          // explotar si alcanza altura o por aleatoriedad
+          if (this.vy >= -0.5 || this.age > 120 || Math.abs(this.x - this.targetX) < 10) {
+            this.shouldExplode = true;
+          }
+        }
+        draw(ctx) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.beginPath();
+          ctx.fillStyle = this.color;
+          ctx.arc(this.x, this.y, 3 + Math.min(4, Math.max(0, (120 - this.age) / 30)), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // Particle constructor (estallan)
+      class Particle {
+        constructor(x, y, color, speed, angle, life) {
+          this.x = x; this.y = y;
+          this.vx = Math.cos(angle) * speed;
+          this.vy = Math.sin(angle) * speed;
+          this.color = color;
+          this.life = life || randInt(50, 120);
+          this.age = 0;
+          this.size = rand(1.5, 3.5);
+          this.alpha = 1;
+        }
+        update() {
+          this.vy += GRAVITY;
+          this.vx *= PARTICLE_FRICTION;
+          this.vy *= PARTICLE_FRICTION;
+          this.vx *= AIR_RESIST;
+          this.vy *= AIR_RESIST;
+          this.x += this.vx;
+          this.y += this.vy;
+          this.age++;
+          this.alpha = Math.max(0, 1 - this.age / this.life);
+        }
+        draw(ctx) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = this.alpha;
+          // pequeño resplandor y punto central
+          ctx.beginPath();
+          ctx.fillStyle = this.color;
+          ctx.arc(this.x, this.y, this.size * 1.6, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.fillStyle = '#fff';
+          ctx.globalAlpha = Math.min(0.9, this.alpha * 0.7);
+          ctx.arc(this.x, this.y, this.size * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // crear una explosión en (x,y)
+      function explode(x, y, baseColor) {
+        const count = randInt(30, 140);
+        const hue = baseColor || colors[randInt(0, colors.length - 1)];
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = rand(1.5, 6.5) * (0.6 + Math.random() * 0.9);
+          const life = randInt(40, 110);
+          // ligeras variaciones de color por transparencia sobre fondo oscuro
+          const col = shadeColor(hue, rand(-20, 20));
+          particles.push(new Particle(x, y, col, speed, angle, life));
+        }
+        // opcional: pequeñas chispas retrógradas
+      }
+
+      // Utility: oscurecer/alisar color hex by percentage (-100..100)
+      function shadeColor(hex, percent) {
+        // hex like #RRGGBB
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c.split('').map(ch => ch + ch).join('');
+        const num = parseInt(c, 16);
+        let r = (num >> 16) + Math.round(255 * (percent / 100));
+        let g = ((num >> 8) & 0x00FF) + Math.round(255 * (percent / 100));
+        let b = (num & 0x0000FF) + Math.round(255 * (percent / 100));
+        r = Math.max(0, Math.min(255, r));
+        g = Math.max(0, Math.min(255, g));
+        b = Math.max(0, Math.min(255, b));
+        return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+      }
+
+      // lanzar rocket desde suelo a (tx,ty)
+      function launch(tx, ty) {
+        const startX = rand(window.innerWidth * 0.2, window.innerWidth * 0.8);
+        const startY = window.innerHeight + 10;
+        const color = colors[randInt(0, colors.length - 1)];
+        rockets.push(new Rocket(startX, startY, tx, ty, color));
+      }
+
+      // click/touch handlers
+      function onPointer(e) {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+        const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+        // lanzar varias para efecto
+        for (let i = 0; i < randInt(1, 3); i++) {
+          launch(x + rand(-30, 30), y + rand(-30, 30));
+        }
+      }
+      canvas.addEventListener('pointerdown', onPointer, { passive: false });
+      canvas.addEventListener('touchstart', onPointer, { passive: false });
+
+      // animación
+      let lastTime = 0;
+      function step(t) {
+        const dt = t - lastTime;
+        lastTime = t;
+        // limpiar con trazado suave para estelas
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // actualizar y dibujar rockets
+        for (let i = rockets.length - 1; i >= 0; i--) {
+          const r = rockets[i];
+          r.update();
+          r.draw(ctx);
+          // trail
+          ctx.save();
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = r.color;
+          ctx.fillRect(r.x - 1, r.y + 6, 2, 6);
+          ctx.restore();
+
+          if (r.shouldExplode) {
+            explode(r.x, r.y, r.color);
+            rockets.splice(i, 1);
+          }
+        }
+
+        // actualizar y dibujar partículas
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.update();
+          p.draw(ctx);
+          if (p.age > p.life || p.alpha <= 0.02 || p.y > window.innerHeight + 50) {
+            particles.splice(i, 1);
+          }
+        }
+
+        requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+
+      // Auto-lanzador
+      let autoInterval = null;
+      function startAuto() {
+        if (autoInterval) return;
+        autoInterval = setInterval(() => {
+          const tx = rand(window.innerWidth * 0.15, window.innerWidth * 0.85);
+          const ty = rand(window.innerHeight * 0.15, window.innerHeight * 0.55);
+          launch(tx, ty);
+        }, randInt(600, 1400));
+        document.getElementById('toggleAuto').textContent = 'Detener Auto';
+      }
+      function stopAuto() {
+        if (!autoInterval) return;
+        clearInterval(autoInterval);
+        autoInterval = null;
+        document.getElementById('toggleAuto').textContent = 'Iniciar Auto';
+      }
+      // Por defecto activo
+      startAuto();
+
+      document.getElementById('toggleAuto').addEventListener('click', () => {
+        if (autoInterval) stopAuto(); else startAuto();
+      });
+      document.getElementById('clearBtn').addEventListener('click', () => {
+        rockets.length = 0; particles.length = 0;
+        // limpiar canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
+
+      // pulir dibujo inicial
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    })();
+  </script>
+</body>
+
+</html>
